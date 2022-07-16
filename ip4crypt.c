@@ -11,7 +11,7 @@
 int change_key(unsigned char *key)
 {
     const char *pwd = "Password";
-    if(PKCS5_PBKDF2_HMAC_SHA1(pwd, strlen(pwd), (const unsigned char*)key, sizeof(key)-1, 50000, sizeof(key), key) == 0 )
+    if(PKCS5_PBKDF2_HMAC_SHA1(pwd, strlen(pwd), (const unsigned char*)key, sizeof(key)-1, ROUNDS, sizeof(key), key) == 0 )
       fprintf(stderr, "PKCS5_PBKDF2_HMAC_SHA1 failed\n");
     
     return 0;

@@ -5,16 +5,8 @@
 
 #define ENCRYPT 0
 #define DECRYPT 1
-
 #define ROTL(X, R) (X) = (unsigned char) (((X) << (R)) & 0xff) | ((X) >> (8 - (R)))
-
-#define ROTL1(a,b) (((a) << (b)) | ((a) >> (32 - (b))))
-#define QR(a, b, c, d) (			\
-	a += b,  d ^= a,  d = ROTL1(d,5),	\
-	c += d,  b ^= c,  b = ROTL1(b,3),	\
-	a += b,  d ^= a,  d = ROTL1(d,4),	\
-	c += d,  b ^= c,  b = ROTL1(b,2))
-#define ROUNDS 20
+#define ROUNDS 50000
 
 int change_key(unsigned char *key)
 {

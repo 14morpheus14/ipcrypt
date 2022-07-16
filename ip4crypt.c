@@ -3,6 +3,9 @@
 #include <string.h>
 #include <openssl/evp.h>
 
+#define ENCRYPT 0
+#define DECRYPT 1
+
 #define ROTL(X, R) (X) = (unsigned char) (((X) << (R)) & 0xff) | ((X) >> (8 - (R)))
 
 #define ROTL1(a,b) (((a) << (b)) | ((a) >> (32 - (b))))
@@ -51,21 +54,6 @@ static void arx_bwd(int *state)
     state[2] &= 0xff;     //b2 &=0xff
 }
 
-int ip4crypt_decrypt(int *out, int *in, unsigned char *key)
-{
-    int state[4];
-    
-    xor4(state, in, key + 12);
-    arx_bwd(state);
-    xor4(state, state, key + 8);
-    arx_bwd(state);
-    xor4(state, state, key + 4);
-    arx_bwd(state);
-    xor4(out, state, key);
-    
-    return 0;
-}
-
 static void arx_fwd(int *state)
 {
     state[0] += state[1]; //b0 +=b1
@@ -89,42 +77,36 @@ static void arx_fwd(int *state)
 }
 
 
-int ip4crypt_encrypt(int *out, int *in, unsigned char *key)
+unsigned char *ip4crypt(char *ip, unsigned char *key, int dir)
 {
     int state[4];
-    
-    xor4(state, in, key);
-    arx_fwd(state);
-    xor4(state, state, key + 4);
-    arx_fwd(state);
-    xor4(state, state, key + 8);
-    arx_fwd(state);
-    xor4(out, state, key + 12);
-    
-    return 0;
-}
-unsigned char *decrypt_ip(char *ip, unsigned char *key)
-{
-  int in[4] = {0,0,0,0};
-  int out[4] = {0,0,0,0};
-  if (4 == sscanf(ip,"%d%*[^0123456789]%d%*[^0123456789]%d%*[^0123456789]%d%*[^0123456789]", &in[0], &in[1], &in[2], &in[3]))
-    if (ip4crypt_decrypt(out, in, key) != 0)
-      fprintf(stderr, "IP4_DECRYPTION FAILED\n");
-  unsigned char *ip_dcrypt = (char*) malloc(sizeof(ip));
-  sprintf(ip_dcrypt, "%d.%d.%d.%d", out[0], out[1], out[2], out[3]);
-  return ip_dcrypt;
-}
-                              
-unsigned char *encrypt_ip(char *ip, unsigned char *key)
-{
     int in[4] = {0,0,0,0};
     int out[4] = {0,0,0,0};
-    if (4 == sscanf(ip,"%d%*[^0123456789]%d%*[^0123456789]%d%*[^0123456789]%d%*[^0123456789]", &in[0], &in[1], &in[2], &in[3])) 
-      if (ip4crypt_encrypt(out, in, key) != 0)
-        fprintf(stderr, "IPV4_ENCRYPTION FAILED\n");
-    unsigned char *ip_crypt = (char*) malloc(sizeof(ip));
-    sprintf(ip_crypt, "%d.%d.%d.%d", out[0], out[1], out[2], out[3]);
-    return ip_crypt;
+    unsigned char *output = (char*) malloc(sizeof(ip));
+    if (4 == sscanf(ip,"%d%*[^0123456789]%d%*[^0123456789]%d%*[^0123456789]%d%*[^0123456789]", &in[0], &in[1], &in[2], &in[3]))
+    {
+        if(!dir){
+            xor4(state, in, key);
+            arx_fwd(state);
+            xor4(state, state, key + 4);
+            arx_fwd(state);
+            xor4(state, state, key + 8);
+            arx_fwd(state);
+            xor4(out, state, key + 12);
+        }
+        else
+        {
+            xor4(state, in, key + 12);
+            arx_bwd(state);
+            xor4(state, state, key + 8);
+            arx_bwd(state);
+            xor4(state, state, key + 4);
+            arx_bwd(state);
+            xor4(out, state, key);
+        }
+    }
+    sprintf(output, "%d.%d.%d.%d", out[0], out[1], out[2], out[3]);
+    return output;
 }
 
 int main(void)
@@ -132,6 +114,7 @@ int main(void)
   unsigned char key[16] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
   char *ip_enc;
   char *ip_dec = "192.168.2.1";
+  
   for(int i = 0; i<5; i++)
   { 
     printf("--------------------------------------------------------------------\n\n");
@@ -139,10 +122,10 @@ int main(void)
     
     printf("IPV4_INPUT = %s\n", ip_dec);
     
-    ip_enc = encrypt_ip(ip_dec, key);
+    ip_enc = ip4crypt(ip_dec, key, ENCRYPT);
     printf("IPV4_ENCRYPTED = %s\n", ip_enc);
     
-    ip_dec = decrypt_ip(ip_enc, key);
+    ip_dec = ip4crypt(ip_enc, key, DECRYPT);
     printf("IPV4_DECRYPTED = %s\n", ip_dec);
     
     if (change_key(key) !=0)
